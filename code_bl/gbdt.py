@@ -68,7 +68,54 @@ def train_lgb(train_x, train_y, test_x):
     return pred_test
 
 
+def hyperparameter_seach(train_x, train_y):
+    from scipy.stats import randint as sp_randint
+    from scipy.stats import uniform as sp_uniform
+
+    fit_params={"early_stopping_rounds":30, 
+                "eval_metric" : 'multiclass', 
+                "eval_set" : [(train_x, train_y)],
+                'eval_names': ['valid'],
+                'verbose': 100,
+                'categorical_feature': ['max_dist_mode', 'min_dist_mode', 'max_price_mode',
+                                        'min_price_mode', 'max_eta_mode', 'min_eta_mode',
+                                        'first_mode', 'weekday', 'hour']}
+
+    param_test ={'num_leaves': sp_randint(6, 50), 
+                 'min_child_samples': sp_randint(100, 500), 
+                 'min_child_weight': [1e-5, 1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3, 1e4],
+                 'subsample': sp_uniform(loc=0.2, scale=0.8), 
+                 'colsample_bytree': sp_uniform(loc=0.4, scale=0.6),
+                 'reg_alpha': [0, 1e-1, 1, 2, 5, 7, 10, 50, 100],
+                 'reg_lambda': [0, 1e-1, 1, 5, 10, 20, 50, 100]}
+
+    #This parameter defines the number of HP points to be tested
+    n_HP_points_to_test = 100
+
+    import lightgbm as lgb
+    from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
+
+    # n_estimators is set to a "large value". The actual number of trees build will depend on early stopping and 5000 define only the           # absolute maximum
+    clf = lgb.LGBMClassifier(max_depth=-1,
+                             random_state=314,
+                             silent=True,
+                             n_jobs=4,
+                             n_estimators=5000)
+    gs = RandomizedSearchCV(
+        estimator=clf, param_distributions=param_test, 
+        n_iter=n_HP_points_to_test,
+        scoring='f1',
+        cv=3,
+        refit=True,
+        random_state=314,
+        verbose=True)
+
+    gs.fit(train_x, train_y, **fit_params)
+    print('Best score reached: {} with params: {} '.format(gs.best_score_, gs.best_params_))
+
+
 if __name__ == '__main__':
-    train_x, train_y, test_x, submit = gen_features.get_train_test_feas_data()
-    result_lgb = train_lgb(train_x, train_y, test_x)
-    submit_result(submit, result_lgb, 'lgb')
+    data, train_x, train_y, test_x, submit = gen_features.get_train_test_feas_data()
+    hyperparameter_seach(train_x, train_y)
+    #result_lgb = train_lgb(train_x, train_y, test_x)
+    #submit_result(submit, result_lgb, 'lgb')

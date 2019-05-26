@@ -231,7 +231,7 @@ def get_train_test_feas_data():
     data = gen_profile_feas(data)
     data = gen_time_feas(data)
     train_x, train_y, test_x, submit = split_train_test(data)
-    return train_x, train_y, test_x, submit
+    return data, train_x, train_y, test_x, submit
 
 
 if __name__ == '__main__':
